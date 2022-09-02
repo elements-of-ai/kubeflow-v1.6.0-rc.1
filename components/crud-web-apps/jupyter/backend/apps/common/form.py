@@ -12,6 +12,11 @@ SERVER_TYPE_ANNOTATION = "notebooks.kubeflow.org/server-type"
 HEADERS_ANNOTATION = "notebooks.kubeflow.org/http-headers-request-set"
 URI_REWRITE_ANNOTATION = "notebooks.kubeflow.org/http-rewrite-uri"
 
+# Bitfusion support, Add by Yu Wang , 2022-08-31
+BITFUSION_AUTO_ANNOTATION = "auto-management/bitfusion"
+BITFUSION_OS_ANNOTATION = "bitfusion-client/os"
+BITFUSION_VERSION_ANNOTATION = "bitfusion-client/version"
+
 
 def get_form_value(body, defaults, body_field, defaults_field=None,
                    optional=False):
@@ -240,7 +245,7 @@ def set_notebook_gpus(notebook, body, defaults):
     container = notebook["spec"]["template"]["spec"]["containers"][0]
     vendor = gpus["vendor"]
     try:
-        num = str(gpus["num"])
+        num = int(gpus["num"])
     except ValueError:
         raise BadRequest("gpus.num is not a valid number: %s" % gpus["num"])
 
@@ -249,6 +254,12 @@ def set_notebook_gpus(notebook, body, defaults):
 
     container["resources"]["limits"] = limits
 
+    # Add bitfusion support, by Yu Wang 2022-08-31
+    if vendor == "BITFUSION":
+        notebook_annotations = notebook["metadata"]["annotations"]
+        notebook_annotations[BITFUSION_AUTO_ANNOTATION] = "injection"
+        notebook_annotations[BITFUSION_OS_ANNOTATION] = "ubuntu18"
+        notebook_annotations[BITFUSION_VERSION_ANNOTATION] = "450"
 
 def set_notebook_configurations(notebook, body, defaults):
     notebook_labels = notebook["metadata"]["labels"]
