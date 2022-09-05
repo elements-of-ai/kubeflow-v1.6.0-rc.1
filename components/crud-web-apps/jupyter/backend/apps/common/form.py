@@ -252,10 +252,11 @@ def set_notebook_gpus(notebook, body, defaults):
     limits = container["resources"].get("limits", {})
     limits[vendor] = num
 
+
     container["resources"]["limits"] = limits
 
     # Add bitfusion support, by Yu Wang 2022-08-31
-    if vendor == "BITFUSION":
+    if vendor.startswith("bitfusion"):
         notebook_annotations = notebook["metadata"]["annotations"]
         notebook_annotations[BITFUSION_AUTO_ANNOTATION] = "injection"
         notebook_annotations[BITFUSION_OS_ANNOTATION] = "ubuntu18"
