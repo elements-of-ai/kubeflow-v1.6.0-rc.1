@@ -259,8 +259,10 @@ def set_notebook_gpus(notebook, body, defaults):
     if vendor.startswith("bitfusion"):
         notebook_annotations = notebook["metadata"]["annotations"]
         notebook_annotations[BITFUSION_AUTO_ANNOTATION] = "injection"
-        notebook_annotations[BITFUSION_OS_ANNOTATION] = "ubuntu18"
+        notebook_annotations[BITFUSION_OS_ANNOTATION] = "ubuntu20"
         notebook_annotations[BITFUSION_VERSION_ANNOTATION] = "450"
+        container["command"]=["/init"]
+
 
 def set_notebook_configurations(notebook, body, defaults):
     notebook_labels = notebook["metadata"]["labels"]
