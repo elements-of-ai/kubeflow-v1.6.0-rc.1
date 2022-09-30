@@ -262,6 +262,14 @@ def set_notebook_gpus(notebook, body, defaults):
         notebook_annotations[BITFUSION_OS_ANNOTATION] = "ubuntu20"
         notebook_annotations[BITFUSION_VERSION_ANNOTATION] = "450"
         container["command"]=["/init"]
+        contexts = container.get("securityContext",{})
+        contexts["runAsUser"] = 0
+        contexts["allowPrivilegeEscalation"] = False
+        container["securityContext"] = contexts
+
+        # container["command"]=["/bin/sh","-c","jupyter lab", "--notebook-dir=/home/jovyan",
+        # "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--NotebookApp.token=''",
+        # "--NotebookApp.password=''", "--NotebookApp.allow_origin='*'", "--NotebookApp.base_url='/'"]
 
 
 def set_notebook_configurations(notebook, body, defaults):
