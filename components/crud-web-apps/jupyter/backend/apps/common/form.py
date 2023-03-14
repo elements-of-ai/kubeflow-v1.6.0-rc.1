@@ -12,7 +12,7 @@ SERVER_TYPE_ANNOTATION = "notebooks.kubeflow.org/server-type"
 HEADERS_ANNOTATION = "notebooks.kubeflow.org/http-headers-request-set"
 URI_REWRITE_ANNOTATION = "notebooks.kubeflow.org/http-rewrite-uri"
 
-# Bitfusion support, Add by Yu Wang , 2022-08-31
+# Add bitfusion support
 BITFUSION_AUTO_ANNOTATION = "auto-management/bitfusion"
 BITFUSION_OS_ANNOTATION = "bitfusion-client/os"
 BITFUSION_VERSION_ANNOTATION = "bitfusion-client/version"
@@ -255,7 +255,7 @@ def set_notebook_gpus(notebook, body, defaults):
 
     container["resources"]["limits"] = limits
 
-    # Add bitfusion support, by Yu Wang 2022-08-31
+    # Add bitfusion support
     if vendor.startswith("bitfusion"):
         notebook_annotations = notebook["metadata"]["annotations"]
         notebook_annotations[BITFUSION_AUTO_ANNOTATION] = "injection"
