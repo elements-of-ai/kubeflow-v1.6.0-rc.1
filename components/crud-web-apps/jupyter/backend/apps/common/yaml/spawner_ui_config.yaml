@@ -129,44 +129,44 @@ spawnerFormDefaults:
     # value is a list of `configKey`s that we want to be selected by default
     value: ""
     # The list of available affinity configs
-    options: []
-    #options:
-    #  - configKey: "exclusive__n1-standard-2"
-    #    displayName: "Exclusive: n1-standard-2"
-    #    affinity:
-    #      # (Require) Node having label: `node_pool=notebook-n1-standard-2`
-    #      nodeAffinity:
-    #        requiredDuringSchedulingIgnoredDuringExecution:
-    #          nodeSelectorTerms:
-    #            - matchExpressions:
-    #                - key: "node_pool"
-    #                  operator: "In"
-    #                  values:
-    #                   - "notebook-n1-standard-2"
-    #      # (Require) Node WITHOUT existing Pod having label: `notebook-name`
-    #      podAntiAffinity:
-    #        requiredDuringSchedulingIgnoredDuringExecution:
-    #          - labelSelector:
-    #              matchExpressions:
-    #                - key: "notebook-name"
-    #                  operator: "Exists"
-    #            namespaces: []
-    #            topologyKey: "kubernetes.io/hostname"
-    #readOnly: false
+    # options: []
+    options:
+     - configKey: "exclusive__n1-standard-2"
+       displayName: "GPU-Scheduling: GRID-V100-4C"
+       affinity:
+         # (Require) Node having label: `node_pool=notebook-n1-standard-2`
+         nodeAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+             nodeSelectorTerms:
+               - matchExpressions:
+                   - key: "nvidia.com/gpu.product"
+                     operator: "In"
+                     values:
+                      - "GRID-V100-4C"
+         # (Require) Node WITHOUT existing Pod having label: `notebook-name`
+         podAntiAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+             - labelSelector:
+                 matchExpressions:
+                   - key: "notebook-name"
+                     operator: "Exists"
+               namespaces: []
+               topologyKey: "kubernetes.io/hostname"
+    readOnly: false
   tolerationGroup:
     # The default `groupKey` from the options list
     # If readonly, the default value will be the only option
     value: ""
     # The list of available tolerationGroup configs
-    options: []
-    #options:
-    #  - groupKey: "group_1"
-    #    displayName: "Group 1: description"
-    #    tolerations:
-    #      - key: "key1"
-    #        operator: "Equal"
-    #        value: "value1"
-    #        effect: "NoSchedule"
+    #options: []
+    options:
+      - groupKey: "group_1"
+        displayName: "Group 1: description"
+        tolerations:
+          - key: "nvidia.com/gpu"
+            operator: "Exists"
+            value: "value1"
+            effect: "NoSchedule"
     #      - key: "key2"
     #        operator: "Equal"
     #        value: "value2"

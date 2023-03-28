@@ -41,16 +41,24 @@ export class FormGpusComponent implements OnInit {
       }),
     );
 
-    this.backend.getGPUVendors().subscribe(vendors => {
+    this.backend.getGPUVendors().subscribe(vendors => { 
+      console.log('vendors: ', vendors)
       this.installedVendors = new Set(vendors);
+      
     });
   }
 
   // Vendor handling
   public vendorTooltip(vendor: GPUVendor) {
+    
+    console.log('installedVendors: ', this.installedVendors)
+    for (let item in this.installedVendors) {
+      console.log('item: ', item)
+    }
+    
     return !this.installedVendors.has(vendor.limitsKey)
       ? $localize`There are currently no ${vendor.uiName} GPUs in your cluster.`
-      : '';
+      : $localize`There are currently ${vendor.uiName}, installedVendors: ${this.installedVendors}  GPUs in your cluster.`;
   }
 
   // Custom Validation
