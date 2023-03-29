@@ -15,6 +15,8 @@ export class FormGpusComponent implements OnInit {
 
   private gpuCtrl: FormGroup;
   public installedVendors = new Set<string>();
+  public vendorsNums = {};
+  public vendorinfo = "";
 
   subscriptions = new Subscription();
   maxGPUs = 16;
@@ -31,19 +33,38 @@ export class FormGpusComponent implements OnInit {
       .get('vendor')
       .setValidators([this.vendorWithNum()]);
 
-    this.subscriptions.add(
-      this.gpuCtrl.get('num').valueChanges.subscribe((n: string) => {
-        if (n === 'none') {
-          this.gpuCtrl.get('vendor').disable();
-        } else {
-          this.gpuCtrl.get('vendor').enable();
-        }
-      }),
-    );
+    // this.subscriptions.add(
+    //   this.gpuCtrl.get('num').valueChanges.subscribe((n: string) => {
+    //     if (n === 'none') {
+    //       this.gpuCtrl.get('vendor').disable();
+    //     } else {
+    //       this.gpuCtrl.get('vendor').enable();
+    //     }
+    //   }),
+    // );
 
     this.backend.getGPUVendors().subscribe(vendors => { 
       console.log('vendors: ', vendors)
       this.installedVendors = new Set(vendors);
+      
+    });
+
+    this.backend.getGPUCount().subscribe(count => { 
+      console.log('gpu count: ', count);
+      this.vendorsNums = new Object(count);
+      const vendorKey = Object.keys(this.vendorsNums);
+      console.log('vendorKey: ', vendorKey);
+
+      (Object.keys(this.vendorsNums)).forEach((key) => {
+        console.log('$');
+        console.log(key, this.vendorsNums[key]);
+        this.vendorinfo += this.vendorsNums[key] + ' ' + key
+      });
+
+      console.log('this.vendorinfo: ', this.vendorinfo)
+      
+      // console.log('vendorKey Num: ', this.vendorsNums[vendorKey])
+      // this.installedVendors = new Set(count);
       
     });
   }
@@ -51,14 +72,16 @@ export class FormGpusComponent implements OnInit {
   // Vendor handling
   public vendorTooltip(vendor: GPUVendor) {
     
-    console.log('installedVendors: ', this.installedVendors)
-    for (let item in this.installedVendors) {
-      console.log('item: ', item)
+    if (!this.installedVendors.has(vendor.limitsKey)) {
+      return $localize`There are currently no ${vendor.uiName} GPUs in your cluster.`
     }
-    
-    return !this.installedVendors.has(vendor.limitsKey)
-      ? $localize`There are currently no ${vendor.uiName} GPUs in your cluster.`
-      : $localize`There are currently ${vendor.uiName}, installedVendors: ${this.installedVendors}  GPUs in your cluster.`;
+    else {
+      return $localize`There are currently ${this.vendorinfo}  GPUs in your cluster.`;
+    }
+
+    // return !this.installedVendors.has(vendor.limitsKey)
+    //   ? $localize`There are currently no ${vendor.uiName} GPUs in your cluster.`
+    //   : $localize`There are currently ${vendor.uiName}, installedVendors: ${this.installedVendors}  GPUs in your cluster.`;
   }
 
   // Custom Validation

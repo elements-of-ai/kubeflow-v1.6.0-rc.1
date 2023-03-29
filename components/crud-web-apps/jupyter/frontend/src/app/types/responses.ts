@@ -10,4 +10,5 @@ export interface JWABackendResponse extends BackendResponse {
   config?: Config;
   poddefaults?: PodDefault[];
   vendors?: string[];
+  gpuslist?: string[];
 }
