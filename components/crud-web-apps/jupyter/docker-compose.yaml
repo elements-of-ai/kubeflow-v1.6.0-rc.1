@@ -5,10 +5,13 @@ services:
     image: harpersweet/jupyter-web-app:frontend-dev
     build:
       context: ..
-      dockerfile: Dockerfile.frontend-dev
+      dockerfile: jupyter/Dockerfile.frontend-dev
     container_name: jupyter_frontend
     command: [sh, -c, "sleep 9999999"]
     working_dir: /src
+    volumes:
+      - ./frontend/src/proxy.conf.rok.json:/src/src/proxy.conf.rok.json
+      - ./frontend/src:/src/src
     restart: unless-stopped
     ports:
       - 4200:4200
@@ -17,12 +20,15 @@ services:
     image: harpersweet/jupyter-web-app:backend-dev
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: jupyter/Dockerfile
     container_name: jupyter_backend
     command: [sh, -c, "sleep 9999999"]
-    volumes:
-      - ~/.kube:/root/.kube
     working_dir: /src
+    volumes:
+      - ./backend/apps:/src/apps
+      - ~/.kube:/root/.kube
+    environment:
+      - APP_DISABLE_AUTH=true
     restart: unless-stopped
     ports:
       - 5000:5000
