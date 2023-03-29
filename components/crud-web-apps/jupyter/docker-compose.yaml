@@ -22,10 +22,11 @@ services:
       context: ..
       dockerfile: jupyter/Dockerfile
     container_name: jupyter_backend
-    command: [sh, -c, "sleep 9999999"]
+    entrypoint: [bash, -c, "gunicorn -w 3 --reload --bind 0.0.0.0:5000 --access-logfile - entrypoint:app"]
     working_dir: /src
     volumes:
       - ./backend/apps:/src/apps
+      - ../common/backend/kubeflow/kubeflow/crud_backend:/usr/local/lib/python3.8/site-packages/kubeflow/kubeflow/crud_backend
       - ~/.kube:/root/.kube
     environment:
       - APP_DISABLE_AUTH=true
