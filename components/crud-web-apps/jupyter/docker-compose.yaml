@@ -1,0 +1,28 @@
+version: '2.0'
+
+services:
+  jupyter_frontend:
+    image: harpersweet/jupyter-web-app:frontend-dev
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend-dev
+    container_name: jupyter_frontend
+    command: [sh, -c, "sleep 9999999"]
+    working_dir: /src
+    restart: unless-stopped
+    ports:
+      - 4200:4200
+
+  jupyter_backend:
+    image: harpersweet/jupyter-web-app:backend-dev
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: jupyter_backend
+    command: [sh, -c, "sleep 9999999"]
+    volumes:
+      - ~/.kube:/root/.kube
+    working_dir: /src
+    restart: unless-stopped
+    ports:
+      - 5000:5000
