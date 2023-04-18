@@ -7,10 +7,11 @@ services:
       context: ..
       dockerfile: jupyter/Dockerfile.frontend-dev
     container_name: jupyter_frontend
-    command: [sh, -c, "sleep 9999999"]
+    entrypoint: [bash, -c, "npm run serve"]
     working_dir: /src
     volumes:
-      - ./frontend/src/proxy.conf.rok.json:/src/src/proxy.conf.rok.json
+      - ./frontend/package.json:/src/package.json
+      - ./frontend/src/proxy.conf.json:/src/src/proxy.conf.json
       - ./frontend/src:/src/src
     restart: unless-stopped
     ports:
@@ -22,14 +23,15 @@ services:
       context: ..
       dockerfile: jupyter/Dockerfile
     container_name: jupyter_backend
-    entrypoint: [bash, -c, "gunicorn -w 3 --reload --bind 0.0.0.0:5000 --access-logfile - entrypoint:app"]
+    entrypoint: [bash, -c, "gunicorn -w 3 --reload --bind 0.0.0.0:5001 --access-logfile - entrypoint:app"]
     working_dir: /src
     volumes:
       - ./backend/apps:/src/apps
       - ../common/backend/kubeflow/kubeflow/crud_backend:/usr/local/lib/python3.8/site-packages/kubeflow/kubeflow/crud_backend
+      # if you run something like "sudo docker compose up", ~/.kube will probably becomes /root/.kube please make sure there is a valid kubeconfig
       - ~/.kube:/root/.kube
     environment:
       - APP_DISABLE_AUTH=true
     restart: unless-stopped
     ports:
-      - 5000:5000
+      - 5001:5000

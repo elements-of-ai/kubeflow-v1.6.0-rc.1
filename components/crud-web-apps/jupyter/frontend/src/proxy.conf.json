@@ -1,7 +1,10 @@
 {
   "/api": {
-    "target": "http://jupyter_backend:5000",
-    "secure": false
+    "target": "http://jupyter_backend:5001",
+    "secure": false,
+    "headers": {
+      "kubeflow-userid": "user"
+    }
   },
   "/static": {
     "target": "http://localhost:4200",

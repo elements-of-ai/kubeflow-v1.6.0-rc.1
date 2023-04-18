@@ -38,4 +38,4 @@ ENV NG_CLI_ANALYTICS "ci"
 RUN npm ci
 COPY --from=frontend-kubeflow-lib /src/dist/kubeflow/ ./node_modules/kubeflow/
 
-ENTRYPOINT ["/bin/bash","-c","npm run serve:rok"]
+ENTRYPOINT ["/bin/bash","-c","npm run serve"]
