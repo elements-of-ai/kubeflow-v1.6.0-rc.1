@@ -1,3 +1,5 @@
+from kubernetes import client
+import re
 from kubeflow.kubeflow.crud_backend import api, logging
 
 from .. import utils
@@ -61,28 +63,65 @@ def get_gpu_vendors():
     config_vendor_keys = [
         v.get("limitsKey", "") for v in gpus_value.get("vendors", [])
     ]
+# from kubernetes import client, config
+# import re
+# config.load_kube_config()
+    autoscaler_status = {"node_group": {}}
+    v1 = client.CoreV1Api()
+    try:
+        configmap = v1.read_namespaced_config_map(name="cluster-autoscaler-status", namespace="kube-system")
+        autoscaler_status["node_group"] = autoscaler_configmap_parser(configmap)
+    except client.rest.ApiException as e:
+        if e.status == 404:
+            print("Configmap does not exist")
+        else:
+            print("Error:", e.reason)
 
     # Get all of the different resources installed in all nodes
     installed_resources = set()
     nodes = api.list_nodes().items
-    gpu_available = {}
-    
+    # {
+    #     "GRID-V100-8C": {
+    #         "capacity_per_node": "1", 
+    #         "total_capacity": "2", 
+    #         "total_available": "1",
+    #         "autoscaler_enable": True,
+    #         "autoscaler_min_size": 1,
+    #         "autoscaler_max_size": 4,
+    #     },
+    #     "GRID-V100-4C": {
+    #         "capacity_per_node": "1", 
+    #         "total_capacity": "1", 
+    #         "total_available": "1",
+    #         "autoscaler_enable": True,
+    #         "autoscaler_min_size": 1,
+    #         "autoscaler_max_size": 4,
+    #     }
+    # }
+    gpu_info = {}
+
     for node in nodes:
+        print('*/' * 20)
         print('node name: ', node.metadata.name)
         print('node info: ', node.status.capacity)
-        nfd_label = "nvidia.com/gpu.product" 
-        if nfd_label in node.metadata.labels:
-            print('-' * 20)
-            gpu_product = node.metadata.labels["nvidia.com/gpu.product"]
+        NFD_LABEL_PRODUCT = "nvidia.com/gpu.product" 
+        NFD_LABEL_COUNT = "nvidia.com/gpu.count"
+        if NFD_LABEL_PRODUCT in node.metadata.labels:
+            gpu_product = node.metadata.labels[NFD_LABEL_PRODUCT]
             print('gpu_product: ', gpu_product)
-            print('gpu_product type: ', type(gpu_product))
-            gpu_count = node.metadata.labels["nvidia.com/gpu.count"]
-            if gpu_product in gpu_available:
-                gpu_available[gpu_product] += int(gpu_count)
-            else:
-                gpu_available[gpu_product] = 1
 
-        print('node nfd info: ', gpu_available)
+            gpu_info[gpu_product] = gpu_info.get(gpu_product, {})
+            gpu_info[gpu_product]["capacity_per_node"] = int(node.metadata.labels[NFD_LABEL_COUNT])
+            gpu_info[gpu_product]["total_capacity"] = gpu_info[gpu_product].get("total_capacity", 0) + int(node.metadata.labels[NFD_LABEL_COUNT])
+            # TODO: get available info from dcgm exporter
+            gpu_info[gpu_product]["total_available"] = gpu_info[gpu_product]["total_capacity"]
+            machine_deployment_name = "-".join(node.metadata.name.split("-")[:-2])
+            if machine_deployment_name in autoscaler_status['node_group']:
+                gpu_info[gpu_product]['autoscaler_enable'] = True
+                gpu_info[gpu_product]['autoscaler_min_size'] = autoscaler_status['node_group'][machine_deployment_name]['min_size']
+                gpu_info[gpu_product]['autoscaler_max_size'] = autoscaler_status['node_group'][machine_deployment_name]['max_size']
+
+        print('node nfd info: ', gpu_info)
         installed_resources.update(node.status.capacity.keys())  # !!! important
 
     # Keep the vendors the key of which exists in at least one node
@@ -90,7 +129,7 @@ def get_gpu_vendors():
     print('available_vendors: ', available_vendors)
 
     data_field = ["vendors", "gpuslist"]
-    data = [list(available_vendors), gpu_available]
+    data = [list(available_vendors), gpu_info]
 
     print('&' * 20)
     print('api.success_response_2', api.success_response_2(data_field, data))
@@ -130,3 +169,63 @@ def get_gpu_vendors():
 #     print('available_vendors: ', available_vendors)
 
 #     return api.success_response("vendors", list(available_vendors))
+
+# {
+#     'clusterclass-jinheng-gpuworkers-4g-cp85k': {
+#         'namespace': 'tkg-ns-auto', 
+#         'ready': '2', 
+#         'cloudProviderTarget': '2', 
+#         'min_size': '1', 
+#         'max_size': '4', 
+#         'ScaleUp_activity': 'NoActivity', 
+#         'ScaleUp_ready': '2', 
+#         'ScaleUp_cloudProviderTarget': '2', 
+#         'ScaleDown_activity': 'NoCandidates', 
+#         'ScaleDown_candidates': '0'
+#         }, 
+#     'clusterclass-jinheng-gpuworkers-8g-tgsfv': {
+#         'namespace': 'tkg-ns-auto', 
+#         'ready': '1', 
+#         'cloudProviderTarget': '1', 
+#         'min_size': '1', 
+#         'max_size': '4', 
+#         'ScaleUp_activity': 'NoActivity', 
+#         'ScaleUp_ready': '1', 
+#         'ScaleUp_cloudProviderTarget': '1', 
+#         'ScaleDown_activity': 'NoCandidates', 
+#         'ScaleDown_candidates': '0'
+#         }
+# }
+def autoscaler_configmap_parser(configmap):
+    AUTOSCALER_STATUS_NODEGROUP_LENGTH = 10
+    autoscaler_status_array = [x for x in configmap.data['status'].split('\n') if x != '']
+    node_group_number = int((len(autoscaler_status_array) - 1 - autoscaler_status_array.index("NodeGroups:")) / AUTOSCALER_STATUS_NODEGROUP_LENGTH)
+    node_groups = {}
+    for i in range(node_group_number):
+        node_group = {}
+        node_group_init_index = autoscaler_status_array.index("NodeGroups:") + 1 + i * AUTOSCALER_STATUS_NODEGROUP_LENGTH
+        # '  Name:        MachineDeployment/tkg-ns-auto/clusterclass-jinheng-gpuworkers-4g-cp85k'
+        regexp = re.compile(r'^\s*Name:\s+MachineDeployment\/(?P<namespace>.*?)\/(?P<machine_deployment>.*?)$')
+        re_match = regexp.match(autoscaler_status_array[node_group_init_index])
+        node_groups[re_match.group('machine_deployment')] = node_group
+        node_group['namespace'] = re_match.group('namespace')
+        # '  Health:      Healthy (ready=2 unready=0 (resourceUnready=0) notStarted=0 longNotStarted=0 registered=2 longUnregistered=0 cloudProviderTarget=2 (minSize=1, maxSize=4))'
+        regexp = re.compile(r'^\s*Health:\s+Healthy \(ready=(?P<ready>.*?) unready=(?P<unready>.*?) \(resourceUnready=(?P<resourceUnready>.*?)\) notStarted=(?P<notStarted>.*?) longNotStarted=(?P<longNotStarted>.*?) registered=(?P<registered>.*?) longUnregistered=(?P<longUnregistered>.*?) cloudProviderTarget=(?P<cloudProviderTarget>.*?) \(minSize=(?P<minSize>.*?), maxSize=(?P<maxSize>.*?)\)\)$')
+        re_match = regexp.match(autoscaler_status_array[node_group_init_index + 1])
+        node_group['ready'] = re_match.group('ready')
+        node_group['cloudProviderTarget'] = re_match.group('cloudProviderTarget')
+        node_group['min_size'] = re_match.group('minSize')
+        node_group['max_size'] = re_match.group('maxSize')
+        # '  ScaleUp:     NoActivity (ready=2 cloudProviderTarget=2)'
+        regexp = re.compile(r'^\s*ScaleUp:\s+(?P<activity>.*?) \(ready=(?P<ready>.*?) cloudProviderTarget=(?P<cloudProviderTarget>.*?)\)$')
+        re_match = regexp.match(autoscaler_status_array[node_group_init_index + 4])
+        node_group['ScaleUp_activity'] = re_match.group('activity')
+        node_group['ScaleUp_ready'] = re_match.group('ready')
+        node_group['ScaleUp_cloudProviderTarget'] = re_match.group('cloudProviderTarget')
+        # '  ScaleDown:   NoCandidates (candidates=0)'
+        regexp = re.compile(r'^\s*ScaleDown:\s+(?P<activity>.*?) \(candidates=(?P<candidates>.*?)\)$')
+        re_match = regexp.match(autoscaler_status_array[node_group_init_index + 7])
+        node_group['ScaleDown_activity'] = re_match.group('activity')
+        node_group['ScaleDown_candidates'] = re_match.group('candidates')
+    print(node_groups)
+    return node_groups
