@@ -88,6 +88,7 @@ def get_gpu_vendors():
     #         "autoscaler_enable": True,
     #         "autoscaler_min_size": 1,
     #         "autoscaler_max_size": 4,
+    #         "autoscaler_cloud_provider_target": 2,
     #     },
     #     "GRID-V100-4C": {
     #         "capacity_per_node": "1", 
@@ -96,6 +97,7 @@ def get_gpu_vendors():
     #         "autoscaler_enable": True,
     #         "autoscaler_min_size": 1,
     #         "autoscaler_max_size": 4,
+    #         "autoscaler_cloud_provider_target": 1,
     #     }
     # }
     gpu_info = {}
@@ -118,6 +120,7 @@ def get_gpu_vendors():
             machine_deployment_name = "-".join(node.metadata.name.split("-")[:-2])
             if machine_deployment_name in autoscaler_status['node_group']:
                 gpu_info[gpu_product]['autoscaler_enable'] = True
+                gpu_info[gpu_product]['autoscaler_cloud_provider_target'] = autoscaler_status['node_group'][machine_deployment_name]['cloudProviderTarget']
                 gpu_info[gpu_product]['autoscaler_min_size'] = autoscaler_status['node_group'][machine_deployment_name]['min_size']
                 gpu_info[gpu_product]['autoscaler_max_size'] = autoscaler_status['node_group'][machine_deployment_name]['max_size']
 

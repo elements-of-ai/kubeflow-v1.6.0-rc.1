@@ -17,9 +17,7 @@ export class FormGpusComponent implements OnInit {
   public installedVendors = new Set<string>();
   public vendorsNums = {};
   public vendorinfo = "";
-  public headers = []
-  public jsonData:any = [[], []];
-  _object = Object;
+  public gpu_info_table = [];
   subscriptions = new Subscription();
   maxGPUs = 16;
   gpusCount = ['1', '2', '4', '8'];
@@ -52,23 +50,27 @@ export class FormGpusComponent implements OnInit {
     });
 
     this.backend.getGPUCount().subscribe(count => { 
-      // this.jsonData = [count];
-      this.jsonData = []
+      this.gpu_info_table = [["Type", "Available / Capacity" ,"Autoscaler GPU Target", "Autoscaler GPU Range"]];
       Object.entries(count).forEach(vgpuInfo => {
-        console.log("iu34whtkuwsez")
-        console.log(vgpuInfo[1])
-        console.log(vgpuInfo[1].hasOwnProperty("autoscaler_enable"))
-        this.headers = ["Type", "capacity/node", "capacity", "available", "autoscaler", "min", "max"]
-        let valueTable = [vgpuInfo[0], vgpuInfo[1]['capacity_per_node'], vgpuInfo[1]['total_capacity'], vgpuInfo[1]['total_available']]
+        let gpu_info_row = [vgpuInfo[0], vgpuInfo[1]['total_capacity'] + " / " + vgpuInfo[1]['total_available']]
         if (vgpuInfo[1].hasOwnProperty("autoscaler_enable")) {
-          valueTable = valueTable.concat([vgpuInfo[1]['autoscaler_enable'], vgpuInfo[1]['autoscaler_min_size'], vgpuInfo[1]['autoscaler_max_size']])
+          let autoscaler_status = '';
+          if (vgpuInfo[1]['autoscaler_cloud_provider_target'] > vgpuInfo[1]['total_capacity']) {
+            autoscaler_status = ' (scaling up)'
+          } else if (vgpuInfo[1]['autoscaler_cloud_provider_target'] < vgpuInfo[1]['total_capacity']) {
+            autoscaler_status = ' (scaling down)'
+          }
+          gpu_info_row.push(vgpuInfo[1]['autoscaler_cloud_provider_target'] + ' ' + autoscaler_status)
+          gpu_info_row.push(vgpuInfo[1]['autoscaler_min_size'] + " - " + vgpuInfo[1]['autoscaler_max_size'])
         } else {
-          valueTable = valueTable.concat(['No', 'N/A', 'N/A']);
+          gpu_info_row.push('N/A');
+          gpu_info_row.push('N/A');
         }
-        this.jsonData.push(valueTable)
+        this.gpu_info_table.push(gpu_info_row)
       })
+      this.gpu_info_table = this.gpu_info_table[0].map((_, colIndex) => this.gpu_info_table.map(row => row[colIndex]));
+      console.log(this.gpu_info_table)
 
-      console.log(this.jsonData)
       console.log('gpu count: ', count);
       this.vendorsNums = new Object(count);
       const vendorKey = Object.keys(this.vendorsNums);

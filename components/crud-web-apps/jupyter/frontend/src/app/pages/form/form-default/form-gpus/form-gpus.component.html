@@ -1,17 +1,11 @@
 <lib-form-section title="GPUs" i18n-title>
 
-  <table style="border-collapse: collapse">
-    <thead>
-      <tr style="border-bottom: solid 2px black">
-        <th *ngFor="let header of headers; let i = index">{{header}}</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="border-bottom: solid 2px black" *ngFor="let row of jsonData; let i = index">
-        <th *ngFor="let value of row; let j = index">{{ value }} </th>
-      </tr>
-    </tbody>
-  </table>
+  <div class="gpu-table">
+    <div class="gpu-col" *ngFor="let col of gpu_info_table; let i = index">
+      <div class="gpu-head">{{ col[0] }} </div>
+      <div class="gpu-item" *ngFor="let value of col.slice(1); let j = index">{{ value }} </div>
+    </div>
+  </div>
 
   <div class="row" [formGroup]="parentForm.get('gpus')">
     <!--GPUs Vendor-->
