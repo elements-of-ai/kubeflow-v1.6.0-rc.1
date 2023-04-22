@@ -52,7 +52,7 @@ export class FormGpusComponent implements OnInit {
     this.backend.getGPUCount().subscribe(count => { 
       this.gpu_info_table = [["Type", "Available / Capacity" ,"Autoscaler GPU Target", "Autoscaler GPU Range"]];
       Object.entries(count).forEach(vgpuInfo => {
-        let gpu_info_row = [vgpuInfo[0], vgpuInfo[1]['total_capacity'] + " / " + vgpuInfo[1]['total_available']]
+        let gpu_info_row = [vgpuInfo[0], vgpuInfo[1]['total_available'] + " / " + vgpuInfo[1]['total_capacity']]
         if (vgpuInfo[1].hasOwnProperty("autoscaler_enable")) {
           let autoscaler_status = '';
           if (vgpuInfo[1]['autoscaler_cloud_provider_target'] > vgpuInfo[1]['total_capacity']) {

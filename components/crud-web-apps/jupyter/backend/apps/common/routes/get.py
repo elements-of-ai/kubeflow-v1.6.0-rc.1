@@ -4,6 +4,7 @@ from kubeflow.kubeflow.crud_backend import api, logging
 
 from .. import utils
 from . import bp
+import requests
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +76,19 @@ def get_gpu_vendors():
         if e.status == 404:
             print("Configmap does not exist")
         else:
+            # TODO Modify ClusterRole/jupyter-web-app-cluster-role configmaps
+            print("Error:", e.reason)  
+
+# read available gpu num from dcgm 
+    try:
+        dcgm_endpoints = v1.read_namespaced_endpoints(name="nvidia-dcgm-exporter", namespace="gpu-operator")
+        dcgm_gpu_info = dcgm_endpoints_parser(dcgm_endpoints)
+        print('dcgm_gpu_info: ', dcgm_gpu_info)
+    except client.rest.ApiException as e:
+        if e.status == 404:
+            print("DCGM Endpoints does not exist")
+        else:
+            # TODO Modify ClusterRole/jupyter-web-app-cluster-role endpoints
             print("Error:", e.reason)
 
     # Get all of the different resources installed in all nodes
@@ -111,12 +125,9 @@ def get_gpu_vendors():
         if NFD_LABEL_PRODUCT in node.metadata.labels:
             gpu_product = node.metadata.labels[NFD_LABEL_PRODUCT]
             print('gpu_product: ', gpu_product)
-
             gpu_info[gpu_product] = gpu_info.get(gpu_product, {})
             gpu_info[gpu_product]["capacity_per_node"] = int(node.metadata.labels[NFD_LABEL_COUNT])
-            gpu_info[gpu_product]["total_capacity"] = gpu_info[gpu_product].get("total_capacity", 0) + int(node.metadata.labels[NFD_LABEL_COUNT])
-            # TODO: get available info from dcgm exporter
-            gpu_info[gpu_product]["total_available"] = gpu_info[gpu_product]["total_capacity"]
+            gpu_info[gpu_product]["total_capacity"] = gpu_info[gpu_product].get("total_capacity", 0) + int(node.metadata.labels[NFD_LABEL_COUNT])            
             machine_deployment_name = "-".join(node.metadata.name.split("-")[:-2])
             if machine_deployment_name in autoscaler_status['node_group']:
                 gpu_info[gpu_product]['autoscaler_enable'] = True
@@ -124,8 +135,10 @@ def get_gpu_vendors():
                 gpu_info[gpu_product]['autoscaler_min_size'] = autoscaler_status['node_group'][machine_deployment_name]['min_size']
                 gpu_info[gpu_product]['autoscaler_max_size'] = autoscaler_status['node_group'][machine_deployment_name]['max_size']
 
+            gpu_info[gpu_product]["total_available"] = dcgm_gpu_info[gpu_product]
+
         print('node nfd info: ', gpu_info)
-        installed_resources.update(node.status.capacity.keys())  # !!! important
+        installed_resources.update(node.status.capacity.keys())  
 
     # Keep the vendors the key of which exists in at least one node
     available_vendors = installed_resources.intersection(config_vendor_keys)
@@ -137,6 +150,8 @@ def get_gpu_vendors():
     print('&' * 20)
     print('api.success_response_2', api.success_response_2(data_field, data))
     print('type: ', type(api.success_response_2(data_field, data)))
+
+    
 
     return api.success_response_2(data_field, data)
 
@@ -232,3 +247,48 @@ def autoscaler_configmap_parser(configmap):
         node_group['ScaleDown_candidates'] = re_match.group('candidates')
     print(node_groups)
     return node_groups
+
+def dcgm_endpoints_parser(dcgm_endpoints):
+    print('/@'*30)
+    ip_addresses = []
+    total_gpu = 0
+    available_gpu = 0
+    dcgm_info = []
+    available_gpu = {}
+    # ip_port = dcgm_endpoints.subsets[0].ports[0].port
+
+    for address in dcgm_endpoints.subsets[0].addresses:
+        ip_addresses.append(address.ip)
+        ip_address = address.ip
+
+        url = "http://" + ip_address + ":9400/metrics"
+        headers = {"Accept": "text/plain"}
+        response = requests.get(url, headers=headers)
+        raw_info = response.content.decode().split("\n")
+
+        for line in raw_info:
+            if line.startswith("DCGM_FI_DEV_FB_USED"):
+                regexp = re.compile(r'DCGM_FI_DEV_FB_USED{gpu="(?P<gpu>.*?)",UUID="(?P<UUID>.*?)",device="(?P<device>.*?)",modelName="(?P<modelName>.*?)",Hostname="(?P<Hostname>.*?)",DCGM_FI_DRIVER_VERSION="(?P<DCGM_FI_DRIVER_VERSION>.*?)",container="(?P<container>.*?)",namespace="(?P<namespace>.*?)",pod="(?P<pod>.*?)"}.*')
+                re_match = regexp.match(line)
+                if re_match.group("pod") == "":
+                    available_num = 1
+                else:
+                    available_num = 0
+                dcgm_info.append({
+                    "gpu":  re_match.group("gpu"),
+                    "UUID":  re_match.group("UUID"),
+                    "device":  re_match.group("device"),
+                    "modelName":  re_match.group("modelName"),
+                    "Hostname":  re_match.group("Hostname"),
+                    "DCGM_FI_DRIVER_VERSION":  re_match.group("DCGM_FI_DRIVER_VERSION"),
+                    "container":  re_match.group("container"),
+                    "namespace":  re_match.group("namespace"),
+                    "pod":  re_match.group("pod"),
+                    "avilable_num": available_num
+                })
+
+    for item in dcgm_info:
+        modelName = item['modelName'].replace(' ', '-')
+        available_gpu[modelName] = available_gpu.get(modelName, 0) + item['avilable_num']
+
+    return available_gpu
