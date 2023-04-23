@@ -31,6 +31,7 @@ services:
       # if you run something like "sudo docker compose up", ~/.kube will probably becomes /root/.kube please make sure there is a valid kubeconfig
       - ~/.kube:/root/.kube
     environment:
+      - APP_DEV_MODE=true
       - APP_DISABLE_AUTH=true
     restart: unless-stopped
     ports:

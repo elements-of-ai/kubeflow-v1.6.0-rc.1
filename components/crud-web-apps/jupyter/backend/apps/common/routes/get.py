@@ -1,4 +1,5 @@
 from kubernetes import client
+import os
 import re
 from kubeflow.kubeflow.crud_backend import api, logging
 
@@ -263,9 +264,12 @@ def dcgm_endpoints_parser(dcgm_endpoints):
 
         url = "http://" + ip_address + ":9400/metrics"
         headers = {"Accept": "text/plain"}
-        response = requests.get(url, headers=headers)
-        raw_info = response.content.decode().split("\n")
-
+        if os.environ.get('APP_DEV_MODE', False):
+            print("APP_DEV_MODE is True, DCGM_FI_DEV_FB_USED using fake data. Available will be always 0")
+            raw_info = ['DCGM_FI_DEV_FB_USED{gpu="0",UUID="GPU-f9198a3d-233c-11b2-aa65-b864b6b46f61",device="nvidia0",modelName="GRID V100-16C",Hostname="nvidia-dcgm-exporter-5wjxp",DCGM_FI_DRIVER_VERSION="525.60.13",container="liuqi-gpu-test-3",namespace="user",pod="liuqi-gpu-test-3-0"} 0']
+        else:
+            response = requests.get(url, headers=headers, timeout=0.5)
+            raw_info = response.content.decode().split("\n")     
         for line in raw_info:
             if line.startswith("DCGM_FI_DEV_FB_USED"):
                 regexp = re.compile(r'DCGM_FI_DEV_FB_USED{gpu="(?P<gpu>.*?)",UUID="(?P<UUID>.*?)",device="(?P<device>.*?)",modelName="(?P<modelName>.*?)",Hostname="(?P<Hostname>.*?)",DCGM_FI_DRIVER_VERSION="(?P<DCGM_FI_DRIVER_VERSION>.*?)",container="(?P<container>.*?)",namespace="(?P<namespace>.*?)",pod="(?P<pod>.*?)"}.*')
