@@ -136,7 +136,7 @@ def get_gpu_vendors():
                 gpu_info[gpu_product]['autoscaler_min_size'] = autoscaler_status['node_group'][machine_deployment_name]['min_size']
                 gpu_info[gpu_product]['autoscaler_max_size'] = autoscaler_status['node_group'][machine_deployment_name]['max_size']
 
-            gpu_info[gpu_product]["total_available"] = dcgm_gpu_info[gpu_product]
+            gpu_info[gpu_product]["total_available"] = dcgm_gpu_info.get(gpu_product, 0)
 
         print('node nfd info: ', gpu_info)
         installed_resources.update(node.status.capacity.keys())  
@@ -272,7 +272,7 @@ def dcgm_endpoints_parser(dcgm_endpoints):
             raw_info = response.content.decode().split("\n")     
         for line in raw_info:
             if line.startswith("DCGM_FI_DEV_FB_USED"):
-                regexp = re.compile(r'DCGM_FI_DEV_FB_USED{gpu="(?P<gpu>.*?)",UUID="(?P<UUID>.*?)",device="(?P<device>.*?)",modelName="(?P<modelName>.*?)",Hostname="(?P<Hostname>.*?)",DCGM_FI_DRIVER_VERSION="(?P<DCGM_FI_DRIVER_VERSION>.*?)",container="(?P<container>.*?)",namespace="(?P<namespace>.*?)",pod="(?P<pod>.*?)"}.*')
+                regexp = re.compile(r'DCGM_FI_DEV_FB_USED{gpu="(?P<gpu>.*?)",UUID="(?P<UUID>.*?)",device="(?P<device>.*?)",modelName="(?P<modelName>.*?)",(GPU_I_PROFILE="(?P<GPU_I_PROFILE>.*?)",)?(GPU_I_ID="(?P<GPU_I_ID>.*?)",)?Hostname="(?P<Hostname>.*?)",DCGM_FI_DRIVER_VERSION="(?P<DCGM_FI_DRIVER_VERSION>.*?)",container="(?P<container>.*?)",namespace="(?P<namespace>.*?)",pod="(?P<pod>.*?)"}.*')
                 re_match = regexp.match(line)
                 if re_match.group("pod") == "":
                     available_num = 1
@@ -292,7 +292,11 @@ def dcgm_endpoints_parser(dcgm_endpoints):
                 })
 
     for item in dcgm_info:
-        modelName = item['modelName'].replace(' ', '-')
+        if item['modelName'] == "GRID A100DX-7-80C":
+            modelName = "GRID-A100DX-7-80C-MIG-7g.80gb"
+        else:
+            modelName = item['modelName'].replace(' ', '-')
         available_gpu[modelName] = available_gpu.get(modelName, 0) + item['avilable_num']
+    print(available_gpu)
 
     return available_gpu
